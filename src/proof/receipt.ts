@@ -10,7 +10,7 @@ import type {
 } from '../types'
 
 const RECEIPT_SCHEMA_VERSION = '1.0.0'
-const DEFAULT_ENGINE_VERSION = 'dak-core@0.1.0'
+const DEFAULT_ENGINE_VERSION = 'dak-core@0.2.0'
 
 export interface DeterminismReceipt {
   schema_version: string
