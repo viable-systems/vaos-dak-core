@@ -17,3 +17,54 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:determinism
       - run: npm run build
+
+  supabase-dogfood:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Install OS tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq postgresql-client
+      - run: npm ci
+      - name: Start Supabase
+        run: |
+          mkdir -p .supabase-ci
+          supabase init --workdir .supabase-ci --yes
+          supabase start --workdir .supabase-ci --yes \
+            --exclude studio,mailpit,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor
+          status_json="$(supabase status --workdir .supabase-ci -o json | sed '/^Using workdir /d' | sed '/^Stopped services:/d')"
+          api_url="$(printf '%s' "$status_json" | jq -r '.API_URL')"
+          db_url="$(printf '%s' "$status_json" | jq -r '.DB_URL')"
+          service_key="$(printf '%s' "$status_json" | jq -r '.SERVICE_ROLE_KEY')"
+          if [ -z "$api_url" ] || [ "$api_url" = "null" ] || [ -z "$db_url" ] || [ "$db_url" = "null" ] || [ -z "$service_key" ] || [ "$service_key" = "null" ]; then
+            echo "Failed to resolve Supabase runtime env vars"
+            exit 1
+          fi
+          echo "::add-mask::$service_key"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$api_url"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$service_key"
+            echo "SB_DB_URL=$db_url"
+          } >> "$GITHUB_ENV"
+      - name: Apply autonomy schema
+        run: psql "$SB_DB_URL" -v ON_ERROR_STOP=1 -f scripts/ci/supabase-autonomy-schema.sql
+      - name: Run Supabase dogfood suite
+        run: npm run dogfood:supabase
+      - name: Upload Supabase dogfood artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dak-core-supabase-dogfood
+          path: artifacts/supabase-dogfood-core.json
+          if-no-files-found: warn
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --workdir .supabase-ci --yes

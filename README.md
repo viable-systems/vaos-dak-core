@@ -24,7 +24,10 @@ npm install @vaos/dak-core
 npm run test:determinism
 npm run benchmark
 npm run build
+npm run dogfood:supabase
 ```
+
+`dogfood:supabase` expects `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to be set, and writes `artifacts/supabase-dogfood-core.json`.
 
 ## CLI usage
 

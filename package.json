@@ -46,9 +46,11 @@
     "verify:script": "tsx scripts/verify-ledger.ts",
     "replay:script": "tsx scripts/replay-ledger.ts",
     "audit:script": "tsx scripts/audit-ledger.ts",
-    "prepublishOnly": "npm run typecheck && npm run test:determinism && npm run build"
+    "prepublishOnly": "npm run typecheck && npm run test:determinism && npm run build",
+    "dogfood:supabase": "tsx scripts/ci/supabase-dogfood.ts"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.95.3",
     "@types/node": "^24.6.0",
     "tsup": "^8.5.0",
     "tsx": "^4.20.5",

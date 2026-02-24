@@ -2,6 +2,13 @@
 
 All notable changes to `@vaos/dak-core` will be documented in this file.
 
+## Unreleased
+
+- Added Supabase-backed CI dogfood workflow to validate DB-path behavior.
+- Added `scripts/ci/supabase-dogfood.ts` for repeatable integration validation.
+- Added `scripts/ci/supabase-autonomy-schema.sql` bootstrap schema for CI/local runs.
+- Added `npm run dogfood:supabase` and `@supabase/supabase-js` as a dev dependency.
+
 ## 0.2.0 - 2026-02-24
 
 - Added deterministic receipt module (`buildDeterminismReceipt`, `verifyDeterminismReceipt`).
