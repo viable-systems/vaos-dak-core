@@ -25,11 +25,14 @@ interface SupabaseAutonomyQueryResult {
   error?: unknown
 }
 
-export interface SupabaseAutonomyQueryBuilder {
+export type SupabaseAutonomyQueryBuilder = PromiseLike<SupabaseAutonomyQueryResult> & {
   select(columns: string): SupabaseAutonomyQueryBuilder
-  update(values: Record<string, unknown>): SupabaseAutonomyQueryBuilder
-  insert(values: Record<string, unknown>): SupabaseAutonomyQueryBuilder
-  upsert(values: Record<string, unknown>, options?: Record<string, unknown>): SupabaseAutonomyQueryBuilder
+  update(values: object): SupabaseAutonomyQueryBuilder
+  insert(values: object | object[]): SupabaseAutonomyQueryBuilder
+  upsert(
+    values: object | object[],
+    options?: Record<string, unknown>
+  ): SupabaseAutonomyQueryBuilder
   delete(): SupabaseAutonomyQueryBuilder
   eq(column: string, value: unknown): SupabaseAutonomyQueryBuilder
   gt(column: string, value: unknown): SupabaseAutonomyQueryBuilder
@@ -213,7 +216,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
       })
     }
 
-    return (data || []).map(toAutonomyStream)
+    return (Array.isArray(data) ? data : []).map(toAutonomyStream)
   }
 
   async getEvents(streamId: string): Promise<AutonomyEvent[]> {
@@ -230,7 +233,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
       })
     }
 
-    return (data || []).map(toAutonomyEvent)
+    return (Array.isArray(data) ? data : []).map(toAutonomyEvent)
   }
 
   async getEventsAfterSequence(streamId: string, afterSeqNo: number): Promise<AutonomyEvent[]> {
@@ -249,7 +252,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
       })
     }
 
-    return (data || []).map(toAutonomyEvent)
+    return (Array.isArray(data) ? data : []).map(toAutonomyEvent)
   }
 
   async getLatestEvent(streamId: string): Promise<AutonomyEvent | null> {

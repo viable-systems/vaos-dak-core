@@ -1,9 +1,35 @@
 {
   "name": "@vaos/dak-core",
   "version": "0.1.0",
-  "private": true,
+  "description": "Deterministic autonomy kernel primitives for VAOS",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/viable-systems/vaos.git",
+    "directory": "packages/dak-core"
+  },
+  "bugs": {
+    "url": "https://github.com/viable-systems/vaos/issues"
+  },
+  "homepage": "https://github.com/viable-systems/vaos/tree/master/packages/dak-core",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "sideEffects": false
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean --tsconfig tsconfig.build.json",
+    "prepublishOnly": "npm run build"
+  }
 }
