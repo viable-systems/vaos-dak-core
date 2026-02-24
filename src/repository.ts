@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase'
 import {
   AutonomyRepositoryError,
   type AutonomyRepository
@@ -16,6 +15,32 @@ import type {
   NewAutonomyLease,
   NewAutonomySnapshot,
 } from './types'
+
+export interface SupabaseAutonomyQueryClient {
+  from(table: string): SupabaseAutonomyQueryBuilder
+}
+
+interface SupabaseAutonomyQueryResult {
+  data?: unknown
+  error?: unknown
+}
+
+export interface SupabaseAutonomyQueryBuilder {
+  select(columns: string): SupabaseAutonomyQueryBuilder
+  update(values: Record<string, unknown>): SupabaseAutonomyQueryBuilder
+  insert(values: Record<string, unknown>): SupabaseAutonomyQueryBuilder
+  upsert(values: Record<string, unknown>, options?: Record<string, unknown>): SupabaseAutonomyQueryBuilder
+  delete(): SupabaseAutonomyQueryBuilder
+  eq(column: string, value: unknown): SupabaseAutonomyQueryBuilder
+  gt(column: string, value: unknown): SupabaseAutonomyQueryBuilder
+  lt(column: string, value: unknown): SupabaseAutonomyQueryBuilder
+  lte(column: string, value: unknown): SupabaseAutonomyQueryBuilder
+  in(column: string, values: unknown[]): SupabaseAutonomyQueryBuilder
+  order(column: string, options?: { ascending?: boolean }): SupabaseAutonomyQueryBuilder
+  limit(count: number): SupabaseAutonomyQueryBuilder
+  maybeSingle(): Promise<SupabaseAutonomyQueryResult>
+  single(): Promise<SupabaseAutonomyQueryResult>
+}
 
 function isUniqueViolation(code: unknown): boolean {
   return typeof code === 'string' && code === '23505'
@@ -114,8 +139,10 @@ function toAutonomySnapshot(row: unknown): AutonomySnapshot {
 }
 
 export class SupabaseAutonomyRepository implements AutonomyRepository {
+  constructor(private readonly client: SupabaseAutonomyQueryClient) {}
+
   async streamExists(streamId: string): Promise<boolean> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_streams')
       .select('id')
       .eq('id', streamId)
@@ -132,7 +159,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getStream(streamId: string): Promise<AutonomyStream | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_streams')
       .select('*')
       .eq('id', streamId)
@@ -150,7 +177,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
 
   async updateStream(streamId: string, changes: AutonomyStreamUpdate): Promise<AutonomyStream | null> {
     const payload: Record<string, unknown> = { ...changes, updated_at: new Date().toISOString() }
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_streams')
       .update(payload)
       .eq('id', streamId)
@@ -170,7 +197,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
 
   async listRunnableStreams(now: Date, limit: number): Promise<AutonomyStream[]> {
     const iso = now.toISOString()
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_streams')
       .select('*')
       .in('status', ['pending', 'running', 'retry_scheduled'])
@@ -190,7 +217,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getEvents(streamId: string): Promise<AutonomyEvent[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_events')
       .select('*')
       .eq('stream_id', streamId)
@@ -207,7 +234,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getEventsAfterSequence(streamId: string, afterSeqNo: number): Promise<AutonomyEvent[]> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_events')
       .select('*')
       .eq('stream_id', streamId)
@@ -226,7 +253,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getLatestEvent(streamId: string): Promise<AutonomyEvent | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_events')
       .select('*')
       .eq('stream_id', streamId)
@@ -245,7 +272,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getEventByIdempotencyKey(streamId: string, idempotencyKey: string): Promise<AutonomyEvent | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_events')
       .select('*')
       .eq('stream_id', streamId)
@@ -264,7 +291,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async insertEvent(event: NewAutonomyEvent): Promise<AutonomyEvent> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_events')
       .insert([event])
       .select('*')
@@ -291,7 +318,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async advanceStreamSequence(streamId: string, nextSeqNo: number): Promise<void> {
-    const { error } = await supabase
+    const { error } = await this.client
       .from('autonomy_streams')
       .update({
         last_seq_no: nextSeqNo,
@@ -310,7 +337,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getLease(streamId: string): Promise<AutonomyLease | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_leases')
       .select('*')
       .eq('stream_id', streamId)
@@ -327,7 +354,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async createLease(lease: NewAutonomyLease): Promise<AutonomyLease> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_leases')
       .insert([lease])
       .select('*')
@@ -356,7 +383,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
     expectedWorkerId: string,
     nextLease: NewAutonomyLease
   ): Promise<AutonomyLease | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_leases')
       .update({
         worker_id: nextLease.worker_id,
@@ -382,7 +409,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async deleteLease(streamId: string, workerId: string): Promise<boolean> {
-    const { error } = await supabase
+    const { error } = await this.client
       .from('autonomy_leases')
       .delete()
       .eq('stream_id', streamId)
@@ -400,7 +427,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async insertDeadLetter(record: NewAutonomyDeadLetter): Promise<AutonomyDeadLetter> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_dead_letters')
       .insert([{
         stream_id: record.stream_id,
@@ -423,7 +450,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getLatestDeadLetter(streamId: string): Promise<AutonomyDeadLetter | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_dead_letters')
       .select('*')
       .eq('stream_id', streamId)
@@ -442,7 +469,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async upsertSnapshot(snapshot: NewAutonomySnapshot): Promise<AutonomySnapshot> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_snapshots')
       .upsert([{
         stream_id: snapshot.stream_id,
@@ -468,7 +495,7 @@ export class SupabaseAutonomyRepository implements AutonomyRepository {
   }
 
   async getLatestSnapshot(streamId: string): Promise<AutonomySnapshot | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('autonomy_snapshots')
       .select('*')
       .eq('stream_id', streamId)
